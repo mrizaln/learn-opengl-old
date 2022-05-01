@@ -15,6 +15,27 @@ public:
     // the program ID
     unsigned int ID;
 
+    // default constructor use the default shader
+    //-----------------------------------------------------------------------------------
+    Shader()
+    {
+        const char* vDefaultShaderCode { "#version 330 core\n"
+            "layout (location = 0) in vec3 aPos;\n"
+            "void main()\n"
+            "{\n"
+            "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+            "}\0" };
+
+        const char* fDefaultShaderCode { "#version 330 core\n"
+            "out vec4 FragColor;\n"
+            "void main()\n"
+            "{\n"
+            "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+            "}\0" };
+
+        ID = compileShader(vDefaultShaderCode, fDefaultShaderCode);
+    }
+
     // constructor read and build the shader
     //-----------------------------------------------------------------------------------
     Shader(const char* vertexPath, const char* fragmentPath)
@@ -47,10 +68,14 @@ public:
         {
             std::cerr << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ" << std::endl;
         }
-        const char* vShaderCode = vertexCode.c_str();
-        const char* fShaderCode = fragmentCode.c_str();
+        const char* vShaderCode { vertexCode.c_str() };
+        const char* fShaderCode { fragmentCode.c_str() };
 
+        ID = compileShader(vShaderCode, fShaderCode);
+    }
 
+    unsigned int compileShader(const char* vShaderCode, const char* fShaderCode)
+    {
         // 2. compile shaders
         //-----------------------------------------------------------------------------------
         unsigned int vertex, fragment;
@@ -79,14 +104,16 @@ public:
         // delete the shaders as they're linked onto our program now and no longer necessary
         glDeleteShader(vertex);
         glDeleteShader(fragment);
-    };
+
+        return ID;
+    }
     
     // use/activate the shader
     //-----------------------------------------------------------------------------------
     void use()
     {
         glUseProgram(ID);
-    };
+    }
 
     // utility uniform functions
     //-----------------------------------------------------------------------------------
