@@ -1,3 +1,9 @@
+/*---------------------------------------------------------------------------------------
+Description: Use a uniform variable as the mix function's third parameter to vary the
+             amount the two textures are visible. Use the up and down arrow keys to
+             change how much the container or the smiley face is visible.
+---------------------------------------------------------------------------------------*/
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -7,7 +13,8 @@
 #include <shader_header/shader.h>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void processInput(GLFWwindow *window);
+void processInput(GLFWwindow *window, const Shader &theShader);
+void changeAlpha(const Shader &shader, const std::string &increment);
 
 namespace globals
 {
@@ -32,9 +39,11 @@ int main()
         glfwTerminate();
         return -1;
     }
-
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // set glfw input mode
+    glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);      // the key state will remain GLFW_PRESS until polled with glfwGetKey
 
     // glad: load all OpenGL function pointers
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))        // bool == 0 if success
@@ -45,7 +54,7 @@ int main()
     }
 
     // build and compile shader
-    Shader theShader("shader.vs", "shader.fs");
+    Shader theShader("exercise 4.vs", "exercise 4.fs");
 
     // vertex data
     float vertices[] {
@@ -90,26 +99,31 @@ int main()
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
 
+
 /*-----------------------------------------------------------------------------------------------------------
                                     ============[ Texture ]============    
 -----------------------------------------------------------------------------------------------------------*/
     // generate texture (ID)
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
+    unsigned int textureID[2];
+    glGenTextures(2, textureID);
+
+    // texture 0
+    //----------
+
     // bind texture
-    glBindTexture(GL_TEXTURE_2D, textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID[0]);
 
     // set texture parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    // load image
+    // load image (texture 0)
     int imageWidth, imageHeight, nrChannels;
-    unsigned char* imageData { stbi_load("img/container.jpg", &imageWidth, &imageHeight, &nrChannels, 0) };
-
+    stbi_set_flip_vertically_on_load(true);     // fix flipped image when loaded
+    unsigned char* imageData { stbi_load("../../img/container.jpg", &imageWidth, &imageHeight, &nrChannels, 0) };
     if (imageData)
     {
         // now generate texture from image
@@ -119,32 +133,69 @@ int main()
     else
     {
         // fail
-        std::cerr << "Failed to load texture\n" ;
+        std::cerr << "Failed to load texture 0\n" ;
     }
-    
     stbi_image_free(imageData);
-//===========================================================================================================
 
+    // texture 1
+    //----------
+    
+    // bind texture
+    glBindTexture(GL_TEXTURE_2D, textureID[1]);
+
+    // set texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    // load image (texture 1)
+    imageData = stbi_load("../../img/awesomeface.png", &imageWidth, &imageHeight, &nrChannels, 0);
+    if (imageData)
+    {
+        // now generate texture from image
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imageWidth, imageHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, imageData);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        // fail
+        std::cerr << "Failed to load texture 1\n" ;
+    }
+    stbi_image_free(imageData);
+
+
+    // tell opengl for each sampler to which texture unit it belongs to
+    theShader.use();
+    theShader.setInt("texture0", 0);
+    theShader.setInt("texture1", 1);
+//===========================================================================================================
 
     // render loop
     while (!glfwWindowShouldClose(window))
     {
         // input
-        processInput(window);
+        processInput(window, theShader);
 
         // render
         glClearColor(0.2f, 0.3f, 0.4f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        // bind texture to corresponding texture units
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureID[0]);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, textureID[1]);
+
         theShader.use();
-        glBindTexture(GL_TEXTURE_2D, textureID);
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-    
+
     // de-allocate all resources
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
@@ -162,8 +213,31 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     // std::cout << "aspect ratio: " << globals::ASPECT_RATIO << '\n';
 }
 
-void processInput(GLFWwindow *window)
+void processInput(GLFWwindow *window, const Shader &shader)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        changeAlpha(shader, "up");
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        changeAlpha(shader, "down");
+}
+
+// uniform alpha increment handler (increment: up/down)
+void changeAlpha(const Shader &shader, const std::string &increment)
+{
+    float alphaValue {};
+    glGetUniformfv(shader.ID, glGetUniformLocation(shader.ID, "alpha"), &alphaValue);
+
+    if (increment == "up")  alphaValue += 0.01f;
+    if (increment == "down") alphaValue -= 0.01f;
+
+    if (alphaValue > 1.0) alphaValue = 1;
+    if (alphaValue < 0.0) alphaValue = 0;
+
+    // std::cout << alphaValue << '\n';
+
+    // glUniform1f(glGetUniformLocation(shader.ID, "alpha"), alphaValue);
+    shader.setFloat("alpha", alphaValue);
 }
