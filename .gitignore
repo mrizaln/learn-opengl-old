@@ -1,3 +1,4 @@
 bin/**
 residue/**
 temp*
+**/*.bin
