@@ -27,6 +27,8 @@
 // [ forward declarations ]
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
+void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
+void mouse_callback(GLFWwindow* window, double xPos, double yPos);
 void processInput(GLFWwindow *window);
 void updateDeltaTime();
 
@@ -59,20 +61,45 @@ namespace globals
 
 namespace camera
 {
+    float fov { 45.0f };
+
+    // look around
+    float pitch {};             // altitude (angular) (if in physics: pitch = 2pi - theta)
+    float yaw { -90.0f };       // azimuth (if in physics: yaw = phi)
+    glm::vec3 direction { 0.0f, 0.0f, -1.0f };
+    
     /**
      * @brief 
      * NDC is left handed:
-     * - cross(x,y) == -z
-     * - cross(y,z) == -x
-     * - cross(z,x) == -y
+     *  cross(x,y) == -z,
+     *  cross(y,z) == -x,
+     *  cross(z,x) == -y
      */
-    
     glm::vec3 cameraPos { 0.0f, 0.0f, 3.0f };
-    glm::vec3 cameraFront { 0.0f, 0.0f, -1.0f };                                    // z
     glm::vec3 cameraUp { 0.0f, 1.0f, 0.0f };                                        // y
+    glm::vec3 cameraFront { glm::normalize(direction) };                            // z
     glm::vec3 cameraRight { glm::normalize(glm::cross(cameraFront, cameraUp)) };    // x
 
     const float cameraSpeed { 2.5f };  // adjust accordingly
+
+    void updateCamera()
+    {
+        direction.y = sin(glm::radians(pitch));
+        direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        cameraFront = glm::normalize(direction);
+        cameraRight = glm::normalize(glm::cross(cameraFront, cameraUp));
+    }
+}
+
+namespace mouse
+{
+    float lastX {};        // center of screen
+    float lastY {};        // center of screen
+    const float sensitivity { 0.1f };
+
+    // handle the issue of sudden movement of camera when mouse first captured
+    bool firstMouse { true };
 }
 
 
@@ -98,7 +125,16 @@ int main()
         return -1;
     }
     glfwMakeContextCurrent(window);
+
+    // set framebuffer size callback
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // set input mode to capture mouse and callback
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window, mouse_callback);
+
+    // set scroll callback
+    glfwSetScrollCallback(window, scroll_callback);
 
     // glad: load all OpenGL function pointers
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))        // bool == 0 if success
@@ -108,10 +144,8 @@ int main()
         return -1;
     }
 
-//==============================
     // enable depth testing
     glEnable(GL_DEPTH_TEST);
-//==============================
 
     // build and compile shader
     Shader theShader("shader.vs", "shader.fs");
@@ -312,7 +346,7 @@ int main()
         theShader.setMat4("view", view);
         
         // projection matrix changes a lot because of the aspect ratio, so we'll update it
-        projection = glm::perspective(glm::radians(45.0f), globals::ASPECT_RATIO, 0.1f, 100.0f);
+        projection = glm::perspective(glm::radians(camera::fov), globals::ASPECT_RATIO, 0.1f, 100.0f);
         theShader.setMat4("projection", projection);
         
         // model matrix is applied 10 times to create 10 cubes
@@ -320,7 +354,8 @@ int main()
         {
             model = glm::translate(glm::mat4(1.0f), vec);
             float angle { glm::radians(i*20.0f*static_cast<float>(glfwGetTime())) };
-            glm::vec3 axis { glm::vec3( glm::sin(glfwGetTime()+1.0f), glm::sin(glfwGetTime()+0.3f), glm::sin(glfwGetTime()+0.5f) ) };
+            // glm::vec3 axis { glm::vec3( sin(glfwGetTime()+1.0f), sin(glfwGetTime()+0.3f), sin(glfwGetTime()+0.5f) ) };
+            glm::vec3 axis { glm::vec3(1.0f, 0.3f, 0.5f) };
             model = glm::rotate(model, angle, axis);
             theShader.setMat4("model", model);
             ++i;
@@ -357,6 +392,44 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     // std::cout << "aspect ratio: " << globals::ASPECT_RATIO << '\n';
 }
 
+void mouse_callback(GLFWwindow* window, double xPos, double yPos)
+{
+    if (mouse::firstMouse)
+    {
+        mouse::lastX = xPos;
+        mouse::lastY = yPos;
+        mouse::firstMouse = false;
+    }
+
+    // 1. calculate offset
+    float xOffset { static_cast<float>(xPos) - mouse::lastX };
+    float yOffset { mouse::lastY - static_cast<float>(yPos) };  // reversed since y-coordinates range from borrom to top (?)
+
+    mouse::lastX = xPos;
+    mouse::lastY = yPos;
+
+    xOffset *= mouse::sensitivity;
+    yOffset *= mouse::sensitivity;
+
+    // 2. add last offset
+    camera::yaw   += xOffset;
+    camera::pitch += yOffset;
+
+    // 3. constraints
+    if (camera::pitch >  89.0f) camera::pitch =  89.0f;
+    if (camera::pitch < -89.0f) camera::pitch = -89.0f;
+
+    // 4. calculate the direction vector
+    camera::updateCamera();
+}
+
+void scroll_callback(GLFWwindow* window, double xOffset, double yOffset)
+{
+    camera::fov -= static_cast<float>(yOffset);
+    if (camera::fov <  1.0f) camera::fov =  1.0f;
+    if (camera::fov > 45.0f) camera::fov = 45.0f;
+}
+
 void updateDeltaTime()
 {
     float currentFrame { static_cast<float>(glfwGetTime()) };
@@ -371,6 +444,8 @@ void processInput(GLFWwindow *window)
 
     float speed { camera::cameraSpeed * globals::deltaTime };
         // update cameraSpeed by multipying it with globals::deltaTime
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+        speed *= 2;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera::cameraPos += speed * camera::cameraFront;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -382,5 +457,5 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
         camera::cameraPos += speed * camera::cameraUp;
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        camera::cameraPos -= speed * camera::cameraUp;
+        camera::cameraPos -= speed * camera::cameraUp;    
 }
