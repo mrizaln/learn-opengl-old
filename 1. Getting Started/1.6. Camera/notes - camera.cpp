@@ -129,3 +129,159 @@
         {
             glm::mat4 view{ glm::lookAt(cameraPos, cameraTarget, up) };
         }
+
+
+/*-----------------
+    Walk Around
+-----------------*/
+
+/*
+  - we can look around by updating the view matrix by changing the camera position.
+*/
+
+
+/*---------------------------------------------------------------------------------------
+                        ============[ Look Around ]============
+---------------------------------------------------------------------------------------*/
+
+/*
+  - to look around the scene we have to change the cameraFront vector based on the input
+    of the mouse.
+*/
+
+
+    //------------------------
+    //    [ euler angles ]
+    //------------------------
+
+    /*
+      - euler angles are 3 values that can represent any rotation in 3D.
+      - there are 3 euler angles:
+        > pitch:    look up/down        x-axis rotation
+        > yaw:      look right/left     y-axis rotation (up direction)
+        > roll:     how much we roll    z-axis rotation (or y if up if z)
+
+      - for our camera system, we only care about the yaw and pitch values.
+    */
+        namespace camera
+        {
+            float pitch {};             // altitude (angular) (if in physics: pitch = 2pi - theta)
+            float yaw { -90.0f };       // azimuth (if in physics: yaw = phi)
+            glm::vec3 direction(1.0f);
+            auto cameraFront { glm::normalize(direction) };
+            
+            void updateDirection()
+            {
+                direction.y = sin(glm::radians(pitch));
+                direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+                direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+                cameraFront = glm::normalize(direction);
+            }
+        }
+
+
+    //-----------------------
+    //    [ mouse input ]
+    //-----------------------
+
+    /*
+      - the yaw and pitch values are obtained from mouse (or controller/joystick) movement
+        where horizontal mouse-movement affects the yaw and vertical mouse-movement affects
+        the pitch.
+      - the idea is to store the last frame's mouse positions and calculate in the current
+        frame how much the mouse values changed.
+      - the higher the horizontal or vertical difference, the more we update the pitch or
+        yaw value.
+
+      - first, we will tell GLFW that is should hide the cursor and capture it.
+    */
+        GLFWwindow* window { glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL) };
+        
+        void setToCaptureMouseInput()
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        }
+    /*
+      - after this call, whenever we move the mouse it won't be visible and it should not
+        leave the window
+
+      - to calculate the pitch and yaw values, we need to tell GLFW to listen to mouse-movement
+        events.
+    */
+        void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+        
+        void setCursorPosCallback()
+        {
+            glfwSetCursorPosCallback(window, mouse_callback);
+        }
+
+    /*
+      - when handling mouse input for a fly style camera, there are several steps we have
+        to take before we're able to fully calculate the camera's direction vector:
+            1. calculate the mouse's offset since the last frame.
+            2. add the offset values to the camera's yaw and pitch values.
+            3. add some constraints to the minimum/maximum pitch values.
+            4. calculate the direction vector.
+    */
+        namespace mouse
+        {
+            float lastX { 400 };    // center of screen
+            float lastY { 300 };    // center of screen
+            const float sensitivity { 0.1f };
+        }
+
+        void mouse_callback(GLFWwindow* window, double xPos, double yPos)
+        {
+            // 1. calculate offset
+            float xOffset { xPos - mouse::lastX };
+            float yOffset { yPos - mouse::lastY };
+
+            mouse::lastX = xPos;
+            mouse::lastY = yPos;
+
+            xOffset *= mouse::sensitivity;
+            yOffset *= mouse::sensitivity;
+
+            // 2. add last offset
+            camera::yaw   += xOffset;
+            camera::pitch += yOffset;
+
+            // 3. constraints
+            if (camera::pitch >  89.0f) camera::pitch =  89.0f;
+            if (camera::pitch < -89.0f) camera::pitch = -89.0f;
+
+            // 4. calculate the direction vector
+            camera::updateDirection();
+        }
+    
+
+    //----------------
+    //    [ zoom ]
+    //----------------
+
+    /*
+      - we can change the FOV of projection matrix to get an illusion of zooming in.
+      - we control the zoom using the mouse's wheel.
+      - similar to mouse movement, we have a callback function for mouse scrolling.
+    */
+        namespace camera
+        {
+            float fov { 45.0f };
+        }
+
+        void scroll_callback(GLFWwindow* window, double xOffset, double yOffset)
+        {
+            camera::fov -= static_cast<float>(yOffset);
+            if (camera::fov <  1.0f) camera::fov =  1.0f;
+            if (camera::fov > 45.0f) camera::fov = 45.0f;
+        }
+    /*
+      - when scrolling, the yOffset value tells us the amount we scrolled vertically.
+      - after this, we need to update the projection matrix
+
+      - don't forget to register the scroll callback function
+    */
+        void setScrollCallback()
+        {
+            glfwSetScrollCallback(window, scroll_callback);
+        }
