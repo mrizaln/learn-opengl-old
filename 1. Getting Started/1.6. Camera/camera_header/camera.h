@@ -120,6 +120,9 @@ public:
         if (pitch >  89.0f) pitch =  89.0f;
         if (pitch < -89.0f) pitch = -89.0f;
 
+        if (yaw > 360.0f) yaw = fmod(yaw, 360.0f);
+        if (yaw <   0.0f) yaw = fmod(yaw, 360.0f) - 360.0f;
+
         updateCameraVector();
     }
 
