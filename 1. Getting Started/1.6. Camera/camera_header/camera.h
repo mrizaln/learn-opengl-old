@@ -30,15 +30,16 @@ class Camera
 {
 public:
     // euler angles
-    float pitch;
-    float yaw;
+    float pitch;            // in degrees
+    float yaw;              // in degrees
 
     // camera vectors
     glm::vec3 position;
     glm::vec3 up;
     glm::vec3 right;
     glm::vec3 front;
-    glm::vec3 worldUp;
+    glm::vec3 worldUp;              // used for up and down movement
+    glm::vec3 horizontalFront;      // used for forth and back movement
 
     // camera attributes
     float fov;
@@ -81,10 +82,12 @@ public:
         switch (movement)
         {
         case CameraMovement::FORWARD:
-            position += front * speed * deltaTime;
+            // position += front * speed * deltaTime;
+            position += horizontalFront * speed * deltaTime;
             break;
         case CameraMovement::BACKWARD:
-            position -= front * speed * deltaTime;
+            // position -= front * speed * deltaTime;
+            position -= horizontalFront * speed * deltaTime;
             break;
         case CameraMovement::RIGHT:
             position += right * speed * deltaTime;
@@ -93,10 +96,12 @@ public:
             position -= right * speed * deltaTime;
             break;
         case CameraMovement::UPWARD:
-            position += up * speed * deltaTime;
+            // position += up * speed * deltaTime;
+            position += worldUp * speed * deltaTime;
             break;
         case CameraMovement::DOWNWARD:
-            position -= up * speed * deltaTime;
+            // position -= up * speed * deltaTime;
+            position -= worldUp * speed * deltaTime;
             break;
         default:
             break;
@@ -130,7 +135,7 @@ public:
 private:
     void updateCameraVector()
     {
-        glm::vec3 direction {};
+        glm::vec3 direction{};
 
         direction.y = sin(glm::radians(pitch));
         direction.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
@@ -139,6 +144,8 @@ private:
         front = glm::normalize(direction);
         right = glm::normalize(glm::cross(front, worldUp));
         up    = glm::normalize(glm::cross(right, front));
+
+        horizontalFront = glm::normalize(glm::vec3(direction.x, 0, direction.z));       // horizontal front y value is zero (only in xz plane aka horizontal)
     }
 
 
