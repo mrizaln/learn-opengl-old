@@ -134,6 +134,20 @@ public:
         if (fov > 179.0f) fov = 179.0f;
     }
 
+    // reset look, to origin
+    void lookAtOrigin()
+    {
+        const auto& direction{ -position };                     // direction of camera = origin - camera.position; origin at (0,0,0)
+        yaw = 180.0f/M_PI * atan(direction.z/direction.x);      // returns -90 to 90
+
+        if (direction.x < 0.0f)
+            yaw += 180.0f;
+
+        pitch = 180.0f/M_PI * atan(direction.y/sqrt(direction.x*direction.x + direction.z*direction.z));
+
+        updateCameraVector();
+    }
+
 
 private:
     void updateCameraVector()
