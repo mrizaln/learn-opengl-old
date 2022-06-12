@@ -72,8 +72,8 @@ public:
     // return view matrix
     glm::mat4 getViewMatrix()
     {
-        // return glm::lookAt(position, position + front, up);
-        return getLookAtMatrix();
+        return glm::lookAt(position, position + front, up);
+        // return getLookAtMatrix();        // implemented manually
     }
 
     // process camera movement
