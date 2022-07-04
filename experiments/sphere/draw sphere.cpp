@@ -141,7 +141,7 @@ int main()
     // light position and color is in lighting namespace
 
     // sky
-    Sphere skySphere(1000.0f, sphere_constant::min_sector_count, sphere_constant::min_stack_count, true);
+    Sphere skySphere(1000.0f, 18, 6, true);
     const auto& skySpherePosition{ camera.position };       // the sky sphere position will follow the camera; thus, the camera will never be outside the sky
 
 
@@ -320,6 +320,7 @@ int main()
     // de-allocate all resources
     sphere.deleteBuffers();
     lightSphere.deleteBuffers();
+    skySphere.deleteBuffers();
 
     // clearing all previously allocated GLFW resources.
     glfwTerminate();
