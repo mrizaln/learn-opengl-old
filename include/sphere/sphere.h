@@ -18,8 +18,8 @@
 // sphere constants
 namespace sphere_constant
 {
-    const int min_sector_count{ 3 };
-    const int min_stack_count{ 2 };
+    constexpr int min_sector_count{ 3 };
+    constexpr int min_stack_count{ 2 };
 }
 
 class Sphere
@@ -100,9 +100,9 @@ private:
 
         float lengthInv{ 1.0f /radius };
 
-        float sectorStep{ 2 * M_PI / sectorCount };     // longitude step
+        float sectorStep{ static_cast<float>(2 * M_PI / sectorCount) };     // longitude step
         float sectorAngle{};                            // longitude angle
-        float stackStep{ M_PI / stackCount };           // latitude step
+        float stackStep{ static_cast<float>(M_PI / stackCount) };           // latitude step
         float stackAngle{};                             // latitude angle
 
         // stack:
@@ -247,11 +247,11 @@ private:
 
     void clearArrays()
     {
-        std::vector<float>().swap(vertices);
-        std::vector<float>().swap(normals);
-        std::vector<float>().swap(texCoords);
-        std::vector<unsigned int>().swap(indices);
-        std::vector<unsigned int>().swap(lineIndices);
+        vertices.clear();
+        normals.clear();
+        texCoords.clear();
+        indices.clear();
+        lineIndices.clear();
     }
 
     void setBuffers()
