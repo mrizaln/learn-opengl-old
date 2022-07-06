@@ -68,6 +68,7 @@ public:
     ~Sphere()
     {
         clearArrays();
+        deleteBuffers();
     }
 
     void draw()
