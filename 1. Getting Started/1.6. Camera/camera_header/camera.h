@@ -138,9 +138,17 @@ public:
     void lookAtOrigin()
     {
         const auto& direction{ -position };                     // direction of camera = origin - camera.position; origin at (0,0,0)
+        // const auto normalizedDirection{ glm::normalize(direction) };
+
+        // if (abs(normalizedDirection.x - front.x) < 0.05f &&\
+        //     abs(normalizedDirection.y - front.y) < 0.05f &&\
+        //     abs(normalizedDirection.z - front.z) < 0.05f)
+        //     return;
+
         yaw = 180.0f/M_PI * atan(direction.z/direction.x);      // returns -90 to 90
 
-        if (direction.x < 0.0f)
+        // for some reason direction.x < 0 doesn't work, we need to add some error (in this case 1e-5)
+        if (direction.x < 1e-5f)        // fix direction flipped when camera front reset to origin when it already points to origin
             yaw += 180.0f;
 
         pitch = 180.0f/M_PI * atan(direction.y/sqrt(direction.x*direction.x + direction.z*direction.z));
