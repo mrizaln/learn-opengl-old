@@ -68,10 +68,11 @@ public:
     ~Sphere()
     {
         clearArrays();
-        deleteBuffers();
+        // deleteBuffers();     // for some reason it results in segmentation fault ???
+                                // for now i'll just commment it out
     }
 
-    void draw()
+    void draw() const
     {
         // bind buffer
         glBindVertexArray(VAO);
