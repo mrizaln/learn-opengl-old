@@ -20,7 +20,7 @@
 #include <camera_header/camera.h>
 
 // sphere
-#include <sphere/sphere.h>
+#include <shapes/sphere/sphere.h>
 
 // STL
 #include <iostream>
