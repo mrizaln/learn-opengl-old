@@ -73,39 +73,6 @@ public:
 
         ID = compileShader(vShaderCode, fShaderCode);
     }
-
-    unsigned int compileShader(const char* vShaderCode, const char* fShaderCode)
-    {
-        // 2. compile shaders
-        //-----------------------------------------------------------------------------------
-        unsigned int vertex, fragment;
-        char infoLog[512];
-
-        // vertex shader
-        vertex = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertex, 1, &vShaderCode, NULL);
-        glCompileShader(vertex);
-        checkCompileErrors(vertex, "VERTEX");   // print compile error if any
-
-        // fragment shader
-        fragment = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragment, 1, &fShaderCode, NULL);
-        glCompileShader(fragment);
-        checkCompileErrors(fragment, "FRAGMENT");   // print compile error if any
-
-        // shader program
-        ID = glCreateProgram();
-        glAttachShader(ID, vertex);
-        glAttachShader(ID, fragment);
-        glLinkProgram(ID);
-        checkCompileErrors(ID, "PROGRAM");  // print linking error if any
-
-        // delete the shaders as they're linked onto our program now and no longer necessary
-        glDeleteShader(vertex);
-        glDeleteShader(fragment);
-
-        return ID;
-    }
     
     // use/activate the shader
     //-----------------------------------------------------------------------------------
@@ -174,6 +141,39 @@ public:
     }
 
 private:
+    unsigned int compileShader(const char* vShaderCode, const char* fShaderCode)
+    {
+        // 2. compile shaders
+        //-----------------------------------------------------------------------------------
+        unsigned int vertex, fragment;
+        char infoLog[512];
+
+        // vertex shader
+        vertex = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertex, 1, &vShaderCode, NULL);
+        glCompileShader(vertex);
+        checkCompileErrors(vertex, "VERTEX");   // print compile error if any
+
+        // fragment shader
+        fragment = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragment, 1, &fShaderCode, NULL);
+        glCompileShader(fragment);
+        checkCompileErrors(fragment, "FRAGMENT");   // print compile error if any
+
+        // shader program
+        ID = glCreateProgram();
+        glAttachShader(ID, vertex);
+        glAttachShader(ID, fragment);
+        glLinkProgram(ID);
+        checkCompileErrors(ID, "PROGRAM");  // print linking error if any
+
+        // delete the shaders as they're linked onto our program now and no longer necessary
+        glDeleteShader(vertex);
+        glDeleteShader(fragment);
+
+        return ID;
+    }
+
     // utility function for checking shader compilation/linking errors
     //-----------------------------------------------------------------------------------
     void checkCompileErrors(unsigned int shader, std::string type)
