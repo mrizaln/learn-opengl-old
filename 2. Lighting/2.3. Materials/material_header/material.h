@@ -1,18 +1,41 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
+// texture
+#include <texture_header/texture.h>
+
+
 // GLM
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+using MaterialBasic = glm::vec3;
+using MaterialTextured = Texture;
 
-struct Material
+template <class material_type = MaterialBasic>
+class Material
 {
-    glm::vec3 ambient{ 1.0f, 1.0f, 1.0f };
-    glm::vec3 diffuse{ 1.0f, 1.0f, 1.0f };
-    glm::vec3 specular{ 1.0f, 1.0f, 1.0f };
+    material_type ambient{};
+    material_type diffuse{};
+    material_type specular{};
     float shininess{ 1.0f };
+
+public:
+    Material() = default;
+
+    Material(material_type amb, material_type diff, material_type spec, float shin)
+        : ambient{ amb }       // ambient material for textured material should be the same as diffuse
+        , diffuse{ diff }
+        , specular{ spec }
+        , shininess{ shin }
+    {
+    }
+
+    material_type& getAmbient() { return ambient; }
+    material_type& getDiffuse() { return diffuse; }
+    material_type& getSpecular() { return specular; }
+    float getShininess() { return shininess; }
 };
 
 namespace materialCollection
@@ -101,7 +124,7 @@ namespace materialCollection
         0.4 * 128.0f
     };
 
-    Material materialArray[]{
+    Material<MaterialBasic> materialArray[]{
         emerald, jade, obsidian, pearl, ruby, turqoise, brass, bronze, chrome, copper, gold, silver
     };
 }
