@@ -4,10 +4,6 @@
 // GLFW
 #include <GLFW/glfw3.h>
 
-// stb_image
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image/stb_image.h>
-
 // GLM
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -24,7 +20,7 @@
 #include <camera_header/camera.h>
 
 // materials
-#include <material_collection/material_collection.h>
+#include <material_header/material.h>
 
 // STL
 #include <iostream>
@@ -88,18 +84,18 @@ Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
 
 // object 
-template <class object_type>
+template <class object_type, class material_type = MaterialBasic>
 class Object
 {
     object_type object{};
     glm::vec3 position{};
     glm::vec3 scale{ 1.0f };
     Shader shader{};
-    Material material{};
+    Material<material_type> material{};
     glm::mat4 modelMatrix{ glm::mat4(1.0f) };
 
 public:
-    Object(object_type obj, glm::vec3 objPos, Shader objShader, Material material)
+    Object(object_type obj, glm::vec3 objPos, Shader objShader, Material<material_type> material)
         : object{ obj }
         , position { objPos }
         , scale{ 1.0f }
@@ -113,7 +109,7 @@ public:
     void setPosition(float x, float y, float z) { setPosition(glm::vec3{ x, y, z }); }
     void setScale(float scaling) { scale = scaling; }
     void setShader(Shader shdr) { shader = shdr; }
-    void setMaterial(Material mat) { material = mat; }
+    void setMaterial(Material<material_type> mat) { material = mat; }
 
     auto& getObject() { return object; }
     auto& getPosition() { return position; }
@@ -122,13 +118,13 @@ public:
     auto& getModelMatrix() { updateModelMatrix(); return modelMatrix; }
 
     // apply material through shader
-    void applyShader()
+    void applyMaterial()
     {
         shader.use();
-        shader.setVec3("material.ambient",    material.ambient);
-        shader.setVec3("material.diffuse",    material.diffuse);
-        shader.setVec3("material.specular",   material.specular);
-        shader.setFloat("material.shininess", material.shininess);
+        shader.setVec3("material.ambient",    material.getAmbient());
+        shader.setVec3("material.diffuse",    material.getDiffuse());
+        shader.setVec3("material.specular",   material.getSpecular());
+        shader.setFloat("material.shininess", material.getShininess());
     }
 
 
@@ -205,16 +201,21 @@ int main()
         Cube(0.1f),
         glm::vec3{ 1.2f, 1.0f, 2.0f },
         Shader("light-source-shader.vs", "light-source-shader.fs"),
-        Material{}
+        Material{
+            { 1.0f, 1.0f, 1.0f },
+            { 1.0f, 1.0f, 1.0f },
+            { 1.0f, 1.0f, 1.0f },
+            1.0f
+        }
     );
     
 
     // set material uniform in shader.fs;
-    cube.applyShader();
+    cube.applyMaterial();
 
-    cube.getShader().setVec3("light.ambient",  glm::vec3{ 0.2f, 0.2f, 0.2f });
-    cube.getShader().setVec3("light.diffuse",  glm::vec3{ 0.5f, 0.5f, 0.5f });
-    cube.getShader().setVec3("light.specular", glm::vec3{ 1.0f, 1.0f, 1.0f });
+    cube.getShader().setVec3("light.ambient",  light.getMaterial().getAmbient());
+    cube.getShader().setVec3("light.diffuse",  light.getMaterial().getDiffuse());
+    cube.getShader().setVec3("light.specular", light.getMaterial().getSpecular());
 
     //=======================================================================================================
 
@@ -239,7 +240,7 @@ int main()
 
         // change material
         cube.setMaterial(varyingMaterial::material);
-        cube.applyShader();
+        cube.applyMaterial();
 
         // set uniform
         cube.getShader().setVec3("lightPos", light.getPosition());
@@ -275,7 +276,7 @@ int main()
         light.getShader().setMat4("model", light.getModelMatrix());
 
         // light color
-        light.getShader().setVec3("color", light.getMaterial().diffuse);
+        light.getShader().setVec3("color", light.getMaterial().getDiffuse());
         
         // draw
         light.getObject().draw();
@@ -288,7 +289,6 @@ int main()
 
     // clearing all previously allocated GLFW resources.
     // cube.getObject().~Cube();
-    light.getObject().~Cube();
     glfwTerminate();
     return 0;
 }
