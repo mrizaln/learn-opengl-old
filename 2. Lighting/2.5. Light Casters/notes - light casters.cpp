@@ -138,3 +138,96 @@
 
                 [ file: "point lights/shader.fs"; section: attenuation]
         */
+
+
+
+
+/*---------------------------------------------------------------------------------------
+                        ============[ spotlight ]============
+---------------------------------------------------------------------------------------*/
+
+/*
+  - a spotlight is a light source that is located somewhere in the environment that, instead
+    of shooting light rays in all directions, only shoots them in a specific direction.
+  - the result is that only the objects within a certain radius of the spotlight's direction
+    are lit and everything else stays dark.
+
+  - a spotlight in OpenGL is represented by a world-space position, a direction and a [cutoff]
+    angle that specifies the radius of the spotlight.
+  - for each fragment we calculate if the fragment is between the spotlight's cutoff directions
+    and if so, we lit the fragment accordingly.
+
+                        [light]                     lightDir: the vector pointing from the fragment to the light source
+                         / | \                      spotDir : the direction the spotlight is aiming at
+                        /  |  \                     ϕ       : the cutoff angle
+                       / ϕ |   \                    θ       : the angle between lightDir and spotDir
+                      /    |    \
+                     /     ↓     \
+                    /    spotDir  \
+            ---------■---------------------
+            |     / fragment        \     |
+            |    /                   \    |
+            |   /                     \   |
+
+  - so what we basically need to do, is calculate the dot product between the lightDir vector
+    and the spotDir vector and compare this with the cutoff angle ϕ
+*/
+
+
+
+    //------------------
+    //    flashlight
+    //------------------
+
+    /*
+      - a flashlight is a spotlight located at the viewer's position and usually aimed straight
+        ahead from the player's perspective.
+      - a flashlight is basically a normal spotlight, but with its position and direction
+        continually updated based on the player's position and orientation.
+
+      - so the values we're going to need for the fragment shader are the spotlight's position
+        vector, the spotlight's direction vector and the cutoff angle.
+      - we can store these values in the [Light] struct.
+
+            [ file: spotlight/shader.fs; section: spotlight ]
+
+      - next we pass the appropiate values to the shader
+
+            [ file: spotlight/spotlight.cpp; section: "set spotlight" ]
+
+      - now what's left to do is calculate the theta θ value and compare this with the cutoff
+        ϕ value to determine if we're in or outside the spotlight
+
+            [ file: spotlight/shader.fs; section: "spotlight calculation" ]
+    */
+
+
+
+    //-------------------------
+    //    smooth/soft edges
+    //-------------------------
+
+    /*
+      - to create the effect of a smoothly-edged spotlightwe want to simulate a spotlight
+        having an inner and outer code.
+      - we can set the inner cone as the cone defined in the previous section but we also
+        want an outer cone that gradually dims the light from the inner to the edges of the
+        outer cone.
+
+      - to create an outer we simply defined another cosine value that represents the angle
+        between the spotlight's direction vector and the outer cone's vector.
+      - then if a fragment is between the inner and the outer cone, it should calculate an
+        intensity between 0.0 and 1,0.
+
+      - we can calculate such a value using:
+                    I = (θ - γ)/ϵ
+
+            ϵ = the cosine difference between the inner (ϕ) and outer (γ) cone.
+        
+      - we now have an intensity value that is either negative when outside the spotlight,
+        higher that 1.0 when inside the inner cone, and somewhere in between around the edges.
+      - if we properly clamp the values we don't need an if-else in the fragment shader anymore
+        and we can simply multiply the light components with the calculated intensity value.
+
+            [ file: spotlight/shader.fs; section: "smooth edges"]
+    */
