@@ -24,8 +24,9 @@ class Material
 public:
     Material() = default;
 
+    // for Material<MaterialTextured>, use amb as emission instead (repurpose ambience texture as emission texture)
     Material(material_type amb, material_type diff, material_type spec, float shin)
-        : ambient{ amb }       // ambient material for textured material should be the same as diffuse
+        : ambient{ amb }       // ambient material for textured material should be the same as diffuse (repurpose as emission map instead)
         , diffuse{ diff }
         , specular{ spec }
         , shininess{ shin }
