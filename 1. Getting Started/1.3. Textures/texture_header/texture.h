@@ -6,6 +6,7 @@
 #include <stb_image/stb_image.h>
 
 #include <iostream>
+#include <limits>
 
 
 class Texture{
@@ -16,11 +17,34 @@ class Texture{
     int nrChannels{};
     unsigned char* imageData{};
 
+
 public:
-    unsigned int textureUnitNum;
+    static inline constexpr unsigned int maxUnitNum{ std::numeric_limits<unsigned int>::max() };
+
+    unsigned int textureUnitNum{ maxUnitNum };      // means no texture loaded
     unsigned int textureID;
 
-    Texture() = default;
+    // texture but basic material actually
+    Texture(const unsigned char red=0x0, const unsigned char green=0x0, const unsigned char blue=0x0)
+    {
+        textureUnitNum = s_textureUnitCount++;
+
+        nrChannels = 3;
+
+        imageData = new unsigned char[3];
+
+        imageData[0] = red;
+        imageData[1] = green;
+        imageData[2] = blue;
+
+        imageWidth = 1;
+        imageHeight = 1;
+
+        generateTexture();
+
+        delete[] imageData;
+        imageData = nullptr;
+    }
 
     Texture(const char* texFilePath, bool flipVertically = true)
     {
@@ -35,6 +59,7 @@ public:
             generateTexture();
     
         stbi_image_free(imageData);
+        imageData = nullptr;
     }
 
 private:
