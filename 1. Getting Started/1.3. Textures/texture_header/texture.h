@@ -30,7 +30,7 @@ public:
         imageData = stbi_load(texFilePath, &imageWidth, &imageHeight, &nrChannels, 0);
 
         if(!imageData)
-            std::cerr << "Failed to load texture: " << texFilePath;
+            std::cerr << "Failed to load texture: " << texFilePath << '\n';
         else
             generateTexture();
     
@@ -58,7 +58,7 @@ private:
         int imageFormat{ GL_RGB };
         if (nrChannels < 3)
         {
-            std::cerr << "Image's color channel is less than 3 (no function can handle that for now)";
+            std::cerr << "Image's color channel is less than 3 (no function can handle that for now)" << '\n';
             return;
         }
         else if (nrChannels == 4)
