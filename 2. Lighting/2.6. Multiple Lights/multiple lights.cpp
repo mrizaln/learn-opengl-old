@@ -9,26 +9,29 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+// self-made
+//----------
 // shader
 #include <shader_header/shader.h>
-
 // camera
 #include <camera_header/camera.h>
-
 // texture
 #include <texture_header/texture.h>
-
 // shapes
 #include <shapes/sphere/sphere.h>
 #include <shapes/cube/cube.h>
-
 // materials
-#include <material_header/material.h>    // include this for Material struct
+#include <material_header/material.h>
+// lights
+#include <light_header/light.h>
+//----------
 
 
 // STL
 #include <iostream>
 #include <typeinfo>     // for typeid()
+#include <vector>
+#include <string>       // for std::to_string()
 
 //===========================================================================================================
 
@@ -63,7 +66,7 @@ namespace mouse
     float lastX{};
     float lastY{};
     bool firstMouse { true };
-    bool captureMouse{ true };
+    bool captureMouse{ false };
 }
 
 
@@ -71,23 +74,7 @@ namespace mouse
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
 
-// textured material
-class TexturedMaterial
-{
-    // ambient should be the same as diffuse
-
-    Texture diffuseMap{};
-    Texture specularMap{};
-    float shininess{};
-
-public:
-    auto& getDiffuseMap() { return diffuseMap; }
-    auto& getSpecularMap() { return specularMap; }
-    auto& getShininess() { return shininess; }
-};
-
-
-// object 
+// object class
 template <class object_type, class material_type = MaterialBasic>
 class Object
 {
@@ -206,7 +193,6 @@ int main()
     // set framebuffer callback
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     // set glfw to capture cursor and set the callback
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, cursor_position_callback);
     // set scroll callback
     glfwSetScrollCallback(window, scroll_callback);
@@ -220,6 +206,10 @@ int main()
         glfwTerminate();
         return -1;
     }
+
+    // disable cursor
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    mouse::captureMouse = true;
 
     // enable depth testing
     glEnable(GL_DEPTH_TEST);
@@ -235,8 +225,8 @@ int main()
         Material<MaterialTextured>{
             // Texture{"../../../resources/img/matrix.jpg"},      // ambient is repurposed as emission map
             Texture{},
-            Texture{"../../../resources/img/container2.png"},
-            Texture{"../../../resources/img/container2_specular_new.png"},
+            Texture{"../../resources/img/container2.png"},
+            Texture{"../../resources/img/container2_specular_new.png"},
             32.0f
         }
     );
@@ -255,19 +245,118 @@ int main()
         glm::vec3(-1.3f,  1.0f, -1.5f)
     };
 
+    // directional light
+    DirectionalLight dirLight{
+        { -0.2f, -1.0f, -0.3f },        // dir
+        {  0.05f,  0.05f,  0.05f },        // amb
+        {  0.5f,  0.5f,  0.5f },        // diff
+        {  1.0f,  1.0f,  1.0f }         // spec
+    };
 
-    // set material uniform in shader.fs;
+    // point light objects position
+    glm::vec3 pointLightPositions[]{
+        glm::vec3( 0.7f,  0.2f,  2.0f),
+        glm::vec3( 2.3f, -3.3f, -4.0f),
+        glm::vec3(-4.0f,  2.0f, -12.0f),
+        glm::vec3( 0.0f,  0.0f, -3.0f)
+    };
+
+    // point lights
+    std::vector<PointLight> pointLights;
+    for (auto& pos : pointLightPositions)
+    {
+        PointLight l{
+            pos,
+            {  0.05f,  0.05f,  0.05f },        // amb
+            {  0.5f,  0.5f,  0.5f },        // diff
+            {  1.0f,  1.0f,  1.0f },        // spec
+            1.0f,
+            0.09f,
+            0.032f
+        };
+
+        pointLights.push_back(l);
+    }
+
+    // spot light
+    SpotLight spotLight{
+        camera.position,
+        camera.front,
+        {  0.0f,  0.0f,  0.0f },
+        {  1.0f,  1.0f,  1.0f },
+        {  1.0f,  1.0f,  1.0f },
+        1.0f,
+        0.09f,
+        0.032f,
+        12.5f,
+        15.0f
+    };
+
+    // light object to draw (only point lights)
+    std::vector<Object<Sphere>> pointLightObjects;
+    for (std::size_t i{ 0 }; i < pointLights.size(); ++i)
+    {
+        Object<Sphere> light{
+            Sphere(0.2f, 32, 16),
+            pointLights[i].position,
+            Shader("light-source-shader.vs", "light-source-shader.fs"),
+            Material{
+                pointLights[i].specular,
+                pointLights[i].specular,
+                pointLights[i].specular,
+                1.0f
+            }
+        };
+
+        pointLightObjects.push_back(light);
+    }
+    //---------------
+
+
+    // apply material
     cube.applyMaterial();
+    for (auto& l : pointLightObjects)
+        l.applyMaterial();
 
-    // set light uniforms
-    cube.getShader().setVec3("light.ambient",  glm::vec3{  0.2f,  0.2f,  0.2f });
-    cube.getShader().setVec3("light.diffuse",  glm::vec3{  0.5f,  0.5f,  0.5f });
-    cube.getShader().setVec3("light.specular", glm::vec3{  1.0f,  1.0f,  1.0f });
+    // uniforms
+    //---------
+    // set light uniform in shader.fs;
 
-    // set light attenuation constants
-    cube.getShader().setFloat("light.constant",  1.0f);
-    cube.getShader().setFloat("light.linear",    0.007f);
-    cube.getShader().setFloat("light.quadratic", 0.0002f);
+    {
+        Shader& shader{ cube.getShader() };
+        shader.use();
+        
+        // set directional light uniforms
+        shader.setVec3("dirLight.direction", dirLight.direction);
+        shader.setVec3("dirLight.ambient",   dirLight.ambient);
+        shader.setVec3("dirLight.diffuse",   dirLight.diffuse);
+        shader.setVec3("dirLight.specular",  dirLight.specular);
+
+        // set point lights
+        for (std::size_t i{ 0 }; i < pointLights.size(); ++i)
+        {
+            auto num{ std::to_string(i) };
+            shader.setVec3("pointLights[" + num + "].position", pointLights[i].position);
+            shader.setVec3("pointLights[" + num + "].ambient", pointLights[i].ambient);
+            shader.setVec3("pointLights[" + num + "].diffuse", pointLights[i].diffuse);
+            shader.setVec3("pointLights[" + num + "].specular", pointLights[i].specular);
+            shader.setFloat("pointLights[" + num + "].constant", pointLights[i].constant);
+            shader.setFloat("pointLights[" + num + "].linear", pointLights[i].linear);
+            shader.setFloat("pointLights[" + num + "].quadratic", pointLights[i].quadratic);
+        }
+
+        // set spot light
+        shader.setVec3("spotLight.position", spotLight.position);
+        shader.setVec3("spotLight.direction", spotLight.direction);
+        shader.setVec3("spotLight.ambient", spotLight.ambient);
+        shader.setVec3("spotLight.diffuse", spotLight.diffuse);
+        shader.setVec3("spotLight.specular", spotLight.specular);
+        shader.setFloat("spotLight.constant", spotLight.constant);
+        shader.setFloat("spotLight.linear", spotLight.linear);
+        shader.setFloat("spotLight.quadratic", spotLight.quadratic);
+        shader.setFloat("spotLight.cutOff", glm::cos(glm::radians(spotLight.cutOff)));
+        shader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(spotLight.outerCutOff)));
+    }
 
 
     //=======================================================================================================
@@ -279,51 +368,77 @@ int main()
         processInput(window);
 
         // render
-        glClearColor(0.2f, 0.3f, 0.4f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.11f, 1.0f);
 
         // clear color buffer and depth buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // view is handled by camera class
+        auto view { camera.getViewMatrix() };
+
+        // projection matrix changes because of the aspect ratio, so we'll update it
+        auto projection { glm::perspective(glm::radians(camera.fov), configuration::aspectRatio, 0.1f, 100.0f) };
 
         // container
         //----------
-        // use shader
-        cube.getShader().use();
-
-        // apply texture
-        cube.applyTexture();
-
-        // set uniform
-        cube.getShader().setVec3("viewPos", camera.position);
-        
-        // set spotlight
-        cube.getShader().setVec3("light.position", camera.position);
-        cube.getShader().setVec3("light.direction", camera.front);
-        cube.getShader().setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));       // 12.5 degrees of cutOff angle
-        cube.getShader().setFloat("light.outerCutOff", glm::cos(glm::radians(17.5f)));       // 12.5 degrees of cutOff angle
-
-        // view is handled by camera class
-        auto view { camera.getViewMatrix() };
-        cube.getShader().setMat4("view", view);
-        
-        // projection matrix changes a lot because of the aspect ratio, so we'll update it
-        auto projection { glm::perspective(glm::radians(camera.fov), configuration::aspectRatio, 0.1f, 100.0f) };
-        cube.getShader().setMat4("projection", projection);
-        
-        // applied 10 times
-        for(unsigned int i = 0; i < 10; i++)
         {
-            // model matrix
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, cubePositions[i]);
-            float angle = 20.0f * i;
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            cube.getShader().setMat4("model", model);
+            auto& shader{ cube.getShader() };
 
-            // draw
-            cube.getObject().draw();
+            // use shader
+            shader.use();
+
+            // apply texture
+            cube.applyTexture();
+
+            // set uniform
+            shader.setVec3("viewPos", camera.position);
+            
+            // update spotlight position and direction
+            shader.setVec3("spotLight.position", camera.position);
+            shader.setVec3("spotLight.direction", camera.front);
+
+            // set matrices
+            shader.setMat4("projection", projection);
+            shader.setMat4("view", view);
+            
+            // applied 10 times
+            for(unsigned int i = 0; i < 10; i++)
+            {
+                // model matrix
+                glm::mat4 model = glm::mat4(1.0f);
+                model = glm::translate(model, cubePositions[i]);
+                float angle = 20.0f * i;
+                model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+                shader.setMat4("model", model);
+
+                // draw
+                cube.getObject().draw();
+            }
         }
         //----------
+
+
+        // point lights
+        //-------------
+        for (std::size_t i{ 0 }; i < pointLightObjects.size(); ++i)
+        {
+            auto& light{ pointLightObjects[i] };
+            auto& lightShader{ light.getShader() };
+
+            lightShader.use();
+
+            // matrices
+            lightShader.setMat4("view", view);
+            lightShader.setMat4("projection", projection);
+            lightShader.setMat4("model", light.getModelMatrix() );
+
+            // color
+            lightShader.setVec3("color", light.getMaterial().getDiffuse());
+
+            // draw
+            light.getObject().draw();
+        }
+        //-------------
 
 
         glfwSwapBuffers(window);
