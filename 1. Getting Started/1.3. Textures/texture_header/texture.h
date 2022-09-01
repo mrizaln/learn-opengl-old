@@ -9,7 +9,8 @@
 #include <limits>
 
 
-class Texture{
+class Texture
+{
     static inline unsigned int s_textureUnitCount{ 0 };
 
     int imageWidth{};
