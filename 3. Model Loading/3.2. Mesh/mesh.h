@@ -1,3 +1,6 @@
+#ifndef MESH_H
+#define MESH_H
+
 #include <vector>
 #include <string>
 
@@ -6,17 +9,19 @@
 
 #include <shader_header/shader.h>
 
+
 struct Vertex
 {
-    glm::vec3 m_position;
-    glm::vec3 m_normal;
-    glm::vec2 m_texCoords;
+    glm::vec3 m_position{};
+    glm::vec3 m_normal{};
+    glm::vec2 m_texCoords{};
 };
 
 struct Texture
 {
-    unsigned int m_id;
-    std::string m_type;       // e.g. diffuse or specular texture
+    unsigned int m_id{};
+    std::string m_type{};       // e.g. diffuse or specular texture
+    std::string m_path{};
 };
 
 class Mesh
@@ -50,7 +55,7 @@ public:
         unsigned int diffuseNr{ 1 };
         unsigned int specularNr{ 1 };
 
-        for (unsigned int i{ 0 }; i < textures.size(); ++i)
+        for (unsigned int i{ 0 }; i < m_textures.size(); ++i)
         {
             glActiveTexture(GL_TEXTURE0+i);
 
@@ -75,9 +80,9 @@ public:
 
 private:
     // render data
-    unsigned int VAO;
-    unsigned int VBO;
-    unsigned int EBO;
+    unsigned int VAO{};
+    unsigned int VBO{};
+    unsigned int EBO{};
 
     void setupMesh()
     {
@@ -95,14 +100,16 @@ private:
 
         // vertex positions
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), static_cast<void*>(0));
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(0));
         // vertex normals
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), static_cast<void*>(offsetof(Vertex, m_normal)));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_normal)));
         // vertex texture coords
         glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), static_cast<int*>(offsetof(Vertex, m_texCoords)));
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_texCoords)));
 
         glBindVertexArray(0);
     }
 };
+
+#endif
