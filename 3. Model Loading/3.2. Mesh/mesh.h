@@ -10,11 +10,20 @@
 #include <shader_header/shader.h>
 
 
+#define MAX_BONE_INFLUENCE 4
+
+
 struct Vertex
 {
     glm::vec3 m_position{};
     glm::vec3 m_normal{};
     glm::vec2 m_texCoords{};
+    glm::vec3 m_tangent{};
+    glm::vec3 m_bitangent{};
+        // bone indexes which will influence this vertex
+        int m_boneIDs[MAX_BONE_INFLUENCE]{};
+        // weights from each bone
+        float m_weights[MAX_BONE_INFLUENCE]{};
 };
 
 struct Texture
@@ -31,6 +40,7 @@ public:
     std::vector<Vertex>       m_vertices{};
     std::vector<unsigned int> m_indices{};
     std::vector<Texture>      m_textures{};
+    unsigned int VAO{};
 
     Mesh(
         std::vector<Vertex> vertices,
@@ -52,8 +62,10 @@ public:
             to the max number of texture samplers allowed.
         */
 
-        unsigned int diffuseNr{ 1 };
+        unsigned int diffuseNr { 1 };
         unsigned int specularNr{ 1 };
+        unsigned int normalNr  { 1 };
+        unsigned int heightNr  { 1 };
 
         for (unsigned int i{ 0 }; i < m_textures.size(); ++i)
         {
@@ -66,21 +78,25 @@ public:
                 number = std::to_string(diffuseNr++);
             else if (name == "texture_specular")
                 number = std::to_string(specularNr++);
+            else if (name == "texture_normal")
+                number = std::to_string(normalNr++);
+            else if (name == "texture_height")
+                number = std::to_string(heightNr++);
 
             shader.setInt(("material." + name + number).c_str(), i);
             glBindTexture(GL_TEXTURE_2D, m_textures[i].m_id);
         }
-        glActiveTexture(GL_TEXTURE0);
 
         // draw mesh
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(m_indices.size()), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
+
+        glActiveTexture(GL_TEXTURE0);       // set to default
     }
 
 private:
     // render data
-    unsigned int VAO{};
     unsigned int VBO{};
     unsigned int EBO{};
 
@@ -93,6 +109,7 @@ private:
         glBindVertexArray(VAO);
         
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        // a great thing about structs is that their memory layout is sequential, so we can do this:
         glBufferData(GL_ARRAY_BUFFER, m_vertices.size()*sizeof(Vertex), &m_vertices.front(), GL_STATIC_DRAW);
         
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
@@ -106,7 +123,19 @@ private:
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_normal)));
         // vertex texture coords
         glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_texCoords)));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_texCoords)));
+        // vertex tangent
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_tangent)));
+        // vertex bitangent
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_bitangent)));
+            // ids
+            glEnableVertexAttribArray(5);
+            glVertexAttribPointer(5, MAX_BONE_INFLUENCE, GL_INT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_boneIDs)));
+            // weights
+            glEnableVertexAttribArray(6);
+            glVertexAttribPointer(6, MAX_BONE_INFLUENCE, GL_INT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_weights)));
 
         glBindVertexArray(0);
     }
