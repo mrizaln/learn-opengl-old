@@ -57,15 +57,21 @@ public:
     void draw(Shader& shader)
     {
         /*
+            assimp allow up to 8 texture
+
             we assume that each diffuse texture is named texture_diffuseN and each specular
             texture should be named texture_specularN where N is any number ranging from 1
             to the max number of texture samplers allowed.
+
+            naming candidate: texture_diffuseN
+                              material.texture_diffuseN
+                              materials[N].texture_diffuse
         */
 
-        unsigned int diffuseNr { 1 };
-        unsigned int specularNr{ 1 };
-        unsigned int normalNr  { 1 };
-        unsigned int heightNr  { 1 };
+        unsigned int diffuseNr { 0 };
+        unsigned int specularNr{ 0 };
+        unsigned int normalNr  { 0 };
+        unsigned int heightNr  { 0 };
 
         for (unsigned int i{ 0 }; i < m_textures.size(); ++i)
         {
@@ -83,7 +89,9 @@ public:
             else if (name == "texture_height")
                 number = std::to_string(heightNr++);
 
-            shader.setInt(("material." + name + number).c_str(), i);
+            // shader.setInt(("material." + name + number).c_str(), i);            // material.texture_diffuseN
+            shader.setInt(("materials[" + number + "]." + name).c_str(), i);     // materials[N].texture_diffuse
+            // std::cout << "materials[" + number + "]." + name << '\n';
             glBindTexture(GL_TEXTURE_2D, m_textures[i].m_id);
         }
 
