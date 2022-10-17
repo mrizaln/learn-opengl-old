@@ -24,7 +24,8 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, boo
 class Model
 {
 public:
-    Model(const std::string& path)
+    Model(const std::string& path, bool gamma=false)
+        : m_gammaCorrection{ gamma }
     {
         loadModel(path);
     }
@@ -116,7 +117,7 @@ private:
                 // textures (Assimp allows a model to have up to 8 different texture coordinates per vertex)
                 // for now, we're going to use the first set of texture coordinates
                 [&]() -> glm::vec2 {
-                    if (mesh->mTextureCoords[0])
+                    if (mesh->HasTextureCoords(0))
                         return { mesh->mTextureCoords[0][i].x,
                                  mesh->mTextureCoords[0][i].y };
                     else
@@ -124,7 +125,7 @@ private:
                 }(),
                 // tangent
                 [&]() -> glm::vec3 {
-                    if (mesh->mTextureCoords[0])
+                    if (mesh->HasTangentsAndBitangents())
                         return { mesh->mTangents[i].x,
                                  mesh->mTangents[i].y,
                                  mesh->mTangents[i].z };
@@ -133,7 +134,7 @@ private:
                 }(),
                 // bitangent
                 [&]() -> glm::vec3 {
-                    if (mesh->mTextureCoords[0])
+                    if (mesh->HasTangentsAndBitangents())
                         return { mesh->mBitangents[i].x,
                                  mesh->mBitangents[i].y,
                                  mesh->mBitangents[i].z };
@@ -220,7 +221,7 @@ private:
 };
 
 
-unsigned int TextureFromFile(const char* path, const std::string& directory, bool gamma=false)
+unsigned int TextureFromFile(const char* path, const std::string& directory, bool gamma)
 {
     std::string fileName{ directory + "/" + path };
     unsigned int textureID{};
