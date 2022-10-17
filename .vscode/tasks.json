@@ -11,6 +11,7 @@
                 "${file}",
                 "${workspaceFolder}/include/glad/glad.c",
                 "-lglfw",
+                "-lassimp",
                 "-lGL",
                 "-lX11",
                 "-lpthread",
