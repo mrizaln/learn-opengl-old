@@ -1,0 +1,157 @@
+In depth testing, we use the term [depth buffer]. The depth buffer is a buffer that just
+like the color buffer, stores information per fragment and has the same width and height
+as the color buffer. The depth buffer is automatically created by the windowing system
+and stores its depth values as 16, 24, or 32 bit floats. In most systems you'll see a
+depth buffer with a precision of 24 bits.
+
+When depth testing is enables, OpenGL tests the depth value of a fragment against the
+content of the depth buffer. OpenGL performs a depth test and if this test passes, the
+fragment is rendered and the depth buffer is updated with the new depth value. If the
+depth test fails, the fragment is discarded.
+
+Depth testing is done is screen space after the fragment shader has run (and after the
+stencil test). The screen space is coordinates relate directly to the viewport defined by
+OpenGL's [glViewport] function and can be accessed via GLSL's built-in [gl_FragCoord]
+variable in the fragment shader. The x and y components of gl_FragCoord represent the
+fragment's screen-space coordinates (0,0 at bottom-left), and the z component which
+contains the depth value of the fragment.
+
+Depth testing is disabled by default so to enable depth testing we need to enable it with
+the [GL_DEPTH_TEST] option.
+
+    glEnable(GL_DEPTH_TEST);
+
+You should also clear the depth buffer before each frame using [GL_DEPTH_BUFFER_BIT].
+
+    glClear(GL_DEPTH_BUFFER_BIT | <other buffer bit> | ... );
+
+There are certain scenarios where you want to perform the depth test on all fragment and
+discard them accordingly, but not update the depth buffer. OpenGL allows us to disable
+writing to the depth buffer by setting its depth mask to GL_FALSE.
+
+    glDepthMask(GL_FALSE);
+
+
+
+-----------------------------------------------------------------------------------------
+                                [ Depth test function]
+-----------------------------------------------------------------------------------------
+
+    OpenGL allows us to modify the comparison operators it uses for the depth test. This
+    allows is to control when OpenGL should pass or discard fragments and when to update
+    the depth buffer. We can set the comparison operator (or depth function) by calling
+    [glDepthFunc].
+
+        glDepthFunc(<depth_function>);
+
+    depth_functions:
+
+        GL_ALWAYS       the depth test always passes
+        GL_NEVER                       never passes
+        GL_LESS         passes if the fragment's depth value is         less than        the stored depth value
+        GL_EQUAL                                                         equal to
+        GL_LEQUAL                                                 less than or equal to
+        GL_GREATER                                                       greater
+        GL_NOTEQUAL                                                    not equal to
+        GL_GEQUAL                                               greater than or equal to
+
+    By default the depth function GL_LESS is used.
+
+
+
+-----------------------------------------------------------------------------------------
+                              [Depth value precision]
+-----------------------------------------------------------------------------------------
+
+    The depth buffer contains depth values between 0.0 and 1.0 and it compares its
+    content with the z-values for all the objects in the scene as seen from the viewer.
+
+    linear transform:
+
+        F_depth = (z - near) / (far - near);        near and far plane position.
+
+    
+    In practice, a linear depth buffer like this is almost never used. Because of
+    projection properties a non-linear depth equation is used that is proportional to 1/z.
+    The result is that we got enormous precision when z is small and much less precision
+    when z is far away.
+
+    non-linear (1/z) transform:
+
+        F_depth = (1/z - 1/near) / (1/far - 1/near)
+
+    The important thing to remember is that the values in the depth buffer are not linear
+    in clip-space (they are linear in view-space before the projection matrix is applied).
+
+    The equation to transform z-values (from the viewer's perspective) is embedded within
+    the projection matrix so when we transform vertex coordinates from view to clip, and
+    then to screen-space the non-linear equation is applied.
+
+
+
+-----------------------------------------------------------------------------------------
+                          [Visualizing the depth buffer]
+-----------------------------------------------------------------------------------------
+
+    We know that the z-value of the built-in [gl_FragCoord] vector in the fragment shader
+    contains the depth value of that particular fragment. If we were to output this depth
+    value of the fragment as a color we could display the depth values of all the
+    fragments in the scene.
+
+        void main()
+        {
+            FragColor = vec4(vec3(gl_FragCoord.z), 1.0);
+        }
+
+    The above z-values is non-linear. They have a very high precision for small z-values
+    and a low precision for large z-values.
+
+    We can transform the non-linear depth values of the fragment back to its linearity.
+    To achieve this we need to reverse the process of projection for the depth values
+    alone. This means we have to
+        1) Re-transform the depth values from the range [0,1] to NDC in range [-1,1].
+        2) Reverse the non-linear equation from above (previous section; 1/z equation)
+           as done in the projection matrix and apply this inversed equation to the
+           resulting depth value
+    The result is then a linear depth value.
+
+        float ndc = depth * 2.0 - 1.0;
+        float linearDepth = (2.0 * near * far) / (far + near - ndc * (far - near));
+
+    The second equation is derived from:
+        [http://www.songho.ca/opengl/gl_projectionmatrix.html]
+
+    The linearized depth values range from near to far, most of its values will be above
+    1.0. By dividing the linear depth value by far, we convert the linear depth value to
+    the range [0,1].
+
+
+
+-----------------------------------------------------------------------------------------
+                                    [Z-fighting]
+-----------------------------------------------------------------------------------------
+
+    A common visual artifact may occur when two planes or triangles are so closely
+    aligned to each other that the depth buffer does not have enough precision to figure
+    out which one of the two shapes is in front of the other. The result is that the two
+    shapes continually seem to switch order which causes weird glitchy patterns. This is
+    called [z-fighting].
+
+    Z-fighting is a common problem with depth buffers and it's generally more noticable
+    when objects are further away (depth precision small at large z-values). Z-fighting
+    can't be completely prevented, but there are a few tricks that will help to mitigate
+    or completely prevent z-fighting in your scene.
+
+
+
+-----------------------------------------------------------------------------------------
+                                [Prevent z-fighting]
+-----------------------------------------------------------------------------------------
+
+    1) Never place objects too close to each other in a way that some of their triangles
+       closely overlap.
+    2) Set the near plane as far as possible.
+    3) Use a higher precision depth buffer (at the cost of some performance). Most depth
+       buffers have a precision of 24 bits, but most GPUs nowadays support 32 bit depth
+       buffers.
+    4) others.
