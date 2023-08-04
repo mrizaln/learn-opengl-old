@@ -1,0 +1,11 @@
+include/GLFW/**      export-ignore
+include/glad/**      export-ignore
+include/KHR/**       export-ignore
+include/glm/**       export-ignore
+include/stb_image/** export-ignore
+
+include/GLFW**       linguist-vendored
+include/glad/**      linguist-vendored
+include/KHR/**       linguist-vendored
+include/glm/**       linguist-vendored
+include/stb_image/** linguist-vendored
